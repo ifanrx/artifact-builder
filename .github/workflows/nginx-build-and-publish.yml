@@ -10,7 +10,7 @@ on:
         required: false
         type: string
       publish:
-        description: Upload artifacts to S3
+        description: Upload artifacts to the GitHub Release for this nginx version
         required: true
         type: boolean
         default: true
@@ -51,10 +51,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
-      BUILD_ROOT: ${{ runner.temp }}/build/${{ matrix.distro }}
-      OUTPUT_DIR: ${{ runner.temp }}/output/${{ matrix.distro }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare build directories
+        run: |
+          echo "BUILD_ROOT=${RUNNER_TEMP}/build/${{ matrix.distro }}" >> "${GITHUB_ENV}"
+          echo "OUTPUT_DIR=${RUNNER_TEMP}/output/${{ matrix.distro }}" >> "${GITHUB_ENV}"
 
       - name: Install build dependencies
         run: ./nginx/scripts/install-build-deps.sh
@@ -86,14 +89,8 @@ jobs:
       (github.event_name == 'schedule' || inputs.publish == true)
     runs-on: ubuntu-24.04
     env:
+      GH_TOKEN: ${{ github.token }}
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ vars.S3_REGION || 'us-east-1' }}
-      S3_ADDRESSING_STYLE: ${{ vars.S3_ADDRESSING_STYLE }}
-      S3_ENDPOINT_URL: ${{ vars.S3_ENDPOINT_URL }}
-      S3_REGION: ${{ vars.S3_REGION || 'us-east-1' }}
-      S3_PREFIX: ${{ vars.S3_PREFIX }}
     steps:
       - uses: actions/checkout@v4
 
@@ -101,8 +98,14 @@ jobs:
         with:
           path: ${{ runner.temp }}/downloads
 
-      - name: Publish artifacts to S3
-        run: ./nginx/scripts/publish-s3.sh "${RUNNER_TEMP}/downloads" "${NGINX_VERSION}" "${S3_PREFIX}"
+      - name: Prepare release directories
+        run: echo "RELEASE_ASSET_DIR=${RUNNER_TEMP}/release-assets" >> "${GITHUB_ENV}"
+
+      - name: Package release assets
+        run: ./nginx/scripts/package-release-assets.sh "${RUNNER_TEMP}/downloads" "${RELEASE_ASSET_DIR}"
+
+      - name: Publish GitHub Release assets
+        run: ./nginx/scripts/publish-github-release.sh "${RELEASE_ASSET_DIR}" "${NGINX_VERSION}"
 
   update-tracked-version:
     needs:
