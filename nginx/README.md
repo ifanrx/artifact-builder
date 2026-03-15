@@ -11,6 +11,8 @@ GitHub Actions repo for building LuaJIT and nginx dynamic modules, then publishi
 
 Each build also emits a manifest with the resolved dependency SHAs used for that run.
 
+The workflow also verifies that any module linked against LuaJIT resolves `libluajit-5.1.so.2` from `/opt/luajit2/lib` and retains an `RPATH` or `RUNPATH` for that path.
+
 ## Source Of Truth
 
 - [`build-luajit.sh`](./build-luajit.sh) installs LuaJIT into `/opt/luajit2`.

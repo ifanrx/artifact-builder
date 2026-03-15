@@ -71,6 +71,9 @@ jobs:
       - name: Build nginx modules
         run: ./nginx/scripts/build-nginx-modules.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${OUTPUT_DIR}"
 
+      - name: Verify nginx module linkage
+        run: ./nginx/scripts/verify-nginx-modules.sh "${OUTPUT_DIR}/modules"
+
       - name: Write build manifest
         run: ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${{ matrix.distro }}" "${OUTPUT_DIR}/build-manifest.env"
 
