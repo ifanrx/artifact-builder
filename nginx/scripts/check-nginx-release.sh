@@ -20,9 +20,12 @@ fi
 
 tracked_version="$(tr -d '[:space:]' < "${TRACKED_VERSION_FILE}")"
 override_version="${NGINX_VERSION_OVERRIDE:-}"
+event_name="${GITHUB_EVENT_NAME:-}"
 
 if [[ -n "${override_version}" ]]; then
   latest_version="${override_version}"
+elif [[ "${event_name}" == "push" ]]; then
+  latest_version="${tracked_version}"
 else
   latest_version="$(
     curl -fsSL "${DOWNLOAD_INDEX_URL}" \
