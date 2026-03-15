@@ -22,18 +22,20 @@ tracked_version="$(tr -d '[:space:]' < "${TRACKED_VERSION_FILE}")"
 override_version="${NGINX_VERSION_OVERRIDE:-}"
 event_name="${GITHUB_EVENT_NAME:-}"
 
+resolve_latest_version() {
+  curl -fsSL "${DOWNLOAD_INDEX_URL}" \
+    | grep -oE 'nginx-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz' \
+    | sed -E 's/^nginx-|\.tar\.gz$//g' \
+    | sort -V \
+    | tail -n1
+}
+
 if [[ -n "${override_version}" ]]; then
   latest_version="${override_version}"
-elif [[ "${event_name}" == "push" ]]; then
+elif [[ "${event_name}" == "push" && "${tracked_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "${tracked_version}" != "0.0.0" ]]; then
   latest_version="${tracked_version}"
 else
-  latest_version="$(
-    curl -fsSL "${DOWNLOAD_INDEX_URL}" \
-      | grep -oE 'nginx-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz' \
-      | sed -E 's/^nginx-|\.tar\.gz$//g' \
-      | sort -V \
-      | tail -n1
-  )"
+  latest_version="$(resolve_latest_version)"
 fi
 
 [[ -n "${latest_version}" ]] || fail "Failed to resolve latest nginx version"
