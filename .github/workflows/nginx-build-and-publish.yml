@@ -124,7 +124,12 @@ jobs:
     needs:
       - check-release
       - publish
-    if: github.event_name == 'schedule' && needs.publish.result == 'success'
+    if: |
+      needs.publish.result == 'success' &&
+      (
+        github.event_name == 'schedule' ||
+        github.event_name == 'push'
+      )
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
