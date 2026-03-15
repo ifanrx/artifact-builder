@@ -1,6 +1,12 @@
 name: nginx / Build And Publish
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/nginx-build-and-publish.yml"
+      - "nginx/**"
   schedule:
     - cron: "17 4 * * *"
   workflow_dispatch:
@@ -30,7 +36,7 @@ jobs:
       should_build: ${{ steps.check.outputs.should_build }}
       nginx_version: ${{ steps.check.outputs.nginx_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: check
         env:
@@ -39,7 +45,7 @@ jobs:
 
   build:
     needs: check-release
-    if: needs.check-release.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.check-release.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +58,7 @@ jobs:
     env:
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Prepare build directories
         run: |
@@ -77,7 +83,7 @@ jobs:
       - name: Write build manifest
         run: ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${{ matrix.distro }}" "${OUTPUT_DIR}/build-manifest.env"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: nginx-build-${{ matrix.distro }}
           path: ${{ env.OUTPUT_DIR }}
@@ -95,9 +101,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: ${{ runner.temp }}/downloads
 
@@ -117,12 +123,12 @@ jobs:
     if: github.event_name == 'schedule' && needs.publish.result == 'success'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Update tracked nginx version
         run: printf '%s\n' "${{ needs.check-release.outputs.nginx_version }}" > nginx/versions/nginx-version.txt
 
-      - uses: peter-evans/create-pull-request@v7
+      - uses: peter-evans/create-pull-request@v8
         with:
           branch: nginx/chore/update-nginx-version-${{ needs.check-release.outputs.nginx_version }}
           commit-message: "chore(nginx): track nginx ${{ needs.check-release.outputs.nginx_version }}"

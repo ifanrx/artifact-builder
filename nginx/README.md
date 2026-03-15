@@ -28,6 +28,7 @@ No external storage secrets are required for publishing. The workflow publishes 
 
 [`nginx-build-and-publish.yml`](../.github/workflows/nginx-build-and-publish.yml) supports:
 
+- push-triggered validation builds for changes under `nginx/` and the workflow file,
 - scheduled nginx release detection,
 - manual rebuilds via `workflow_dispatch`,
 - per-distro builds for Ubuntu 22.04 (`jammy`) and 24.04 (`noble`),
