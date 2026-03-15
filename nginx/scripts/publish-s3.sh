@@ -8,8 +8,17 @@ source "${SCRIPT_DIR}/common.sh"
 ARTIFACT_ROOT="${1:?usage: publish-s3.sh <artifact_root> <nginx_version> <s3_prefix>}"
 NGINX_VERSION="${2:?usage: publish-s3.sh <artifact_root> <nginx_version> <s3_prefix>}"
 S3_PREFIX="$(normalize_s3_prefix "${3:?usage: publish-s3.sh <artifact_root> <nginx_version> <s3_prefix>}")"
+S3_ENDPOINT_URL="${S3_ENDPOINT_URL:?Missing required environment variable: S3_ENDPOINT_URL}"
+S3_REGION="${S3_REGION:-us-east-1}"
+S3_ADDRESSING_STYLE="${S3_ADDRESSING_STYLE:-}"
 
 require_command aws
+
+aws_base_args=(--endpoint-url "${S3_ENDPOINT_URL}" --region "${S3_REGION}")
+
+if [[ -n "${S3_ADDRESSING_STYLE}" ]]; then
+  aws configure set default.s3.addressing_style "${S3_ADDRESSING_STYLE}"
+fi
 
 upload_and_verify() {
   local local_path="$1"
@@ -22,8 +31,8 @@ upload_and_verify() {
   key="${s3_parts[1]}"
 
   log "Uploading ${local_path} -> ${s3_uri}"
-  aws s3 cp "${local_path}" "${s3_uri}"
-  aws s3api head-object --bucket "${bucket}" --key "${key}" >/dev/null
+  aws "${aws_base_args[@]}" s3 cp "${local_path}" "${s3_uri}"
+  aws "${aws_base_args[@]}" s3api head-object --bucket "${bucket}" --key "${key}" >/dev/null
 }
 
 shopt -s nullglob

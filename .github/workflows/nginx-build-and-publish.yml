@@ -17,7 +17,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
   pull-requests: write
 
 concurrency:
@@ -87,9 +86,13 @@ jobs:
       (github.event_name == 'schedule' || inputs.publish == true)
     runs-on: ubuntu-24.04
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ vars.S3_REGION || 'us-east-1' }}
+      S3_ADDRESSING_STYLE: ${{ vars.S3_ADDRESSING_STYLE }}
+      S3_ENDPOINT_URL: ${{ vars.S3_ENDPOINT_URL }}
+      S3_REGION: ${{ vars.S3_REGION || 'us-east-1' }}
       S3_PREFIX: ${{ vars.S3_PREFIX }}
     steps:
       - uses: actions/checkout@v4
@@ -97,11 +100,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/downloads
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
 
       - name: Publish artifacts to S3
         run: ./nginx/scripts/publish-s3.sh "${RUNNER_TEMP}/downloads" "${NGINX_VERSION}" "${S3_PREFIX}"

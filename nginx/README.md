@@ -1,6 +1,6 @@
 # artifact-builder / nginx
 
-GitHub Actions repo for building LuaJIT and nginx dynamic modules, then publishing the outputs to private S3 storage.
+GitHub Actions repo for building LuaJIT and nginx dynamic modules, then publishing the outputs to private S3-compatible object storage.
 
 ## Outputs
 
@@ -20,16 +20,19 @@ Each build also emits a manifest with the resolved dependency SHAs used for that
 
 Repository variables:
 
-- `AWS_REGION`
+- `S3_ENDPOINT_URL`
+- `S3_REGION`
+- `S3_ADDRESSING_STYLE` optional, for example `path`
 - `S3_PREFIX`
 
-Repository secret:
+Repository secrets:
 
-- `AWS_ROLE_ARN`
+- `S3_ACCESS_KEY_ID`
+- `S3_SECRET_ACCESS_KEY`
 
 `S3_PREFIX` must be a full `s3://...` URI prefix such as `s3://private-bucket/releases`.
 
-The workflow assumes AWS access via GitHub OIDC and `aws-actions/configure-aws-credentials`.
+The workflow uses the AWS CLI against your custom S3-compatible endpoint and does not assume AWS IAM, ARNs, or GitHub OIDC.
 
 ## Workflow
 
