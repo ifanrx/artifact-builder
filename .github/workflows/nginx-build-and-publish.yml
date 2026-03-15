@@ -1,0 +1,127 @@
+name: nginx / Build And Publish
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      nginx_version:
+        description: Optional nginx version to build instead of auto-detecting
+        required: false
+        type: string
+      publish:
+        description: Upload artifacts to S3
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: nginx-build-and-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-release:
+    runs-on: ubuntu-24.04
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      nginx_version: ${{ steps.check.outputs.nginx_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check
+        env:
+          NGINX_VERSION_OVERRIDE: ${{ inputs.nginx_version }}
+        run: ./nginx/scripts/check-nginx-release.sh
+
+  build:
+    needs: check-release
+    if: needs.check-release.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: jammy
+            runner: ubuntu-22.04
+          - distro: noble
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    env:
+      NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
+      BUILD_ROOT: ${{ runner.temp }}/build/${{ matrix.distro }}
+      OUTPUT_DIR: ${{ runner.temp }}/output/${{ matrix.distro }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: ./nginx/scripts/install-build-deps.sh
+
+      - name: Fetch sources
+        run: ./nginx/scripts/fetch-sources.sh "${BUILD_ROOT}" "${NGINX_VERSION}"
+
+      - name: Build LuaJIT archive
+        run: ./nginx/scripts/build-luajit-artifact.sh "${BUILD_ROOT}" "${{ matrix.distro }}" "${OUTPUT_DIR}"
+
+      - name: Build nginx modules
+        run: ./nginx/scripts/build-nginx-modules.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${OUTPUT_DIR}"
+
+      - name: Write build manifest
+        run: ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${{ matrix.distro }}" "${OUTPUT_DIR}/build-manifest.env"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nginx-build-${{ matrix.distro }}
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: error
+
+  publish:
+    needs:
+      - check-release
+      - build
+    if: |
+      success() &&
+      (github.event_name == 'schedule' || inputs.publish == true)
+    runs-on: ubuntu-24.04
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
+      S3_PREFIX: ${{ vars.S3_PREFIX }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/downloads
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+
+      - name: Publish artifacts to S3
+        run: ./nginx/scripts/publish-s3.sh "${RUNNER_TEMP}/downloads" "${NGINX_VERSION}" "${S3_PREFIX}"
+
+  update-tracked-version:
+    needs:
+      - check-release
+      - publish
+    if: github.event_name == 'schedule' && needs.publish.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update tracked nginx version
+        run: printf '%s\n' "${{ needs.check-release.outputs.nginx_version }}" > nginx/versions/nginx-version.txt
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: nginx/chore/update-nginx-version-${{ needs.check-release.outputs.nginx_version }}
+          commit-message: "chore(nginx): track nginx ${{ needs.check-release.outputs.nginx_version }}"
+          title: "chore(nginx): track nginx ${{ needs.check-release.outputs.nginx_version }}"
+          body: |
+            Update the tracked nginx version after a successful scheduled build and publish.

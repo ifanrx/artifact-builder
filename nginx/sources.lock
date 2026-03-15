@@ -1,0 +1,7 @@
+# name type url ref
+luajit2 git https://github.com/openresty/luajit2.git v2.1-20250826
+lua-nginx-module git https://github.com/openresty/lua-nginx-module.git v0.10.25
+headers-more-nginx-module git https://github.com/openresty/headers-more-nginx-module.git HEAD
+ngx_devel_kit git https://github.com/simpl/ngx_devel_kit.git HEAD
+ngx_http_substitutions_filter_module git https://github.com/yaoweibin/ngx_http_substitutions_filter_module.git HEAD
+ngx_brotli git https://github.com/google/ngx_brotli.git HEAD
