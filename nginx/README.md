@@ -24,6 +24,13 @@ The workflow also verifies that any module linked against LuaJIT resolves `liblu
 
 No external storage secrets are required for publishing. The workflow publishes to GitHub Releases using the repository `GITHUB_TOKEN`.
 
+For automatic version-tracking pull requests, add repository secret `PR_BOT_TOKEN` with a fine-grained personal access token that has:
+
+- `Contents: Read and write`
+- `Pull requests: Read and write`
+
+If `PR_BOT_TOKEN` is absent, the workflow falls back to the default `GITHUB_TOKEN`.
+
 ## Workflow
 
 [`nginx-build-and-publish.yml`](../.github/workflows/nginx-build-and-publish.yml) supports:
