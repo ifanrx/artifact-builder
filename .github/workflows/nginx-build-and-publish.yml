@@ -139,6 +139,7 @@ jobs:
 
       - uses: peter-evans/create-pull-request@v8
         with:
+          token: ${{ secrets.PR_BOT_TOKEN || github.token }}
           branch: nginx/chore/update-nginx-version-${{ needs.check-release.outputs.nginx_version }}
           commit-message: "chore(nginx): track nginx ${{ needs.check-release.outputs.nginx_version }}"
           title: "chore(nginx): track nginx ${{ needs.check-release.outputs.nginx_version }}"
