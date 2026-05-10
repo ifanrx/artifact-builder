@@ -17,7 +17,8 @@ log "Installing build dependencies"
 "${sudo_cmd[@]}" apt-get update
 
 pcre_dev_package="libpcre3-dev"
-if ! apt-cache show "${pcre_dev_package}" >/dev/null 2>&1; then
+pcre_dev_candidate="$(apt-cache policy "${pcre_dev_package}" | awk '/Candidate:/ { print $2; exit }')"
+if [[ -z "${pcre_dev_candidate}" || "${pcre_dev_candidate}" == "(none)" ]]; then
   pcre_dev_package="libpcre2-dev"
 fi
 
