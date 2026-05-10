@@ -4,6 +4,13 @@ set -euo pipefail
 export LUAJIT_LIB=/opt/luajit2/lib
 export LUAJIT_INC=/opt/luajit2/include/luajit-2.1
 
+pcre_ld_opt=""
+if pkg-config --exists libpcre; then
+  pcre_ld_opt="-lpcre"
+elif pkg-config --exists libpcre2-8; then
+  pcre_ld_opt="-lpcre2-8"
+fi
+
 ./configure \
   --prefix=/etc/nginx \
   --sbin-path=/usr/sbin/nginx \
@@ -46,7 +53,7 @@ export LUAJIT_INC=/opt/luajit2/include/luajit-2.1
   --with-stream_ssl_module \
   --with-stream_ssl_preread_module \
   --with-cc-opt='-g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -flto=auto -ffat-lto-objects -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fPIC' \
-  --with-ld-opt='-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie -lpcre -Wl,-rpath,/opt/luajit2/lib' \
+  --with-ld-opt="-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie ${pcre_ld_opt} -Wl,-rpath,/opt/luajit2/lib" \
   --add-dynamic-module=../headers-more-nginx-module \
   --add-dynamic-module=../lua-nginx-module \
   --add-dynamic-module=../ngx_devel_kit \

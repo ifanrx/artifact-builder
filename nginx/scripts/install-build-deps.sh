@@ -15,6 +15,12 @@ export DEBIAN_FRONTEND=noninteractive
 
 log "Installing build dependencies"
 "${sudo_cmd[@]}" apt-get update
+
+pcre_dev_package="libpcre3-dev"
+if ! apt-cache show "${pcre_dev_package}" >/dev/null 2>&1; then
+  pcre_dev_package="libpcre2-dev"
+fi
+
 "${sudo_cmd[@]}" apt-get install -y \
   build-essential \
   ca-certificates \
@@ -22,7 +28,7 @@ log "Installing build dependencies"
   curl \
   git \
   libbrotli-dev \
-  libpcre3-dev \
+  "${pcre_dev_package}" \
   libssl-dev \
   perl \
   pkg-config \
