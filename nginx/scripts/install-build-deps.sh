@@ -19,7 +19,19 @@ log "Installing build dependencies"
 pcre_dev_package="libpcre3-dev"
 pcre_dev_candidate="$(apt-cache policy "${pcre_dev_package}" | awk '/Candidate:/ { print $2; exit }')"
 if [[ -z "${pcre_dev_candidate}" || "${pcre_dev_candidate}" == "(none)" ]]; then
-  pcre_dev_package="libpcre2-dev"
+  log "Adding Ubuntu noble package source for libpcre3-dev compatibility"
+  printf '%s\n' 'deb http://archive.ubuntu.com/ubuntu noble main' \
+    | "${sudo_cmd[@]}" tee /etc/apt/sources.list.d/noble-pcre.list >/dev/null
+  {
+    printf 'Package: *\n'
+    printf 'Pin: release n=noble\n'
+    printf 'Pin-Priority: 100\n'
+    printf '\n'
+    printf 'Package: libpcre3 libpcre3-dev\n'
+    printf 'Pin: release n=noble\n'
+    printf 'Pin-Priority: 990\n'
+  } | "${sudo_cmd[@]}" tee /etc/apt/preferences.d/noble-pcre >/dev/null
+  "${sudo_cmd[@]}" apt-get update
 fi
 
 "${sudo_cmd[@]}" apt-get install -y \
