@@ -4,6 +4,13 @@ set -euo pipefail
 export LUAJIT_LIB=/opt/luajit2/lib
 export LUAJIT_INC=/opt/luajit2/include/luajit-2.1
 
+if [[ -f /opt/pcre1/lib/pkgconfig/libpcre.pc ]]; then
+  export PKG_CONFIG_PATH="/opt/pcre1/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+fi
+
+pcre_cflags="$(pkg-config --cflags libpcre 2>/dev/null || true)"
+pcre_ldflags="$(pkg-config --libs libpcre 2>/dev/null || printf '%s' '-lpcre')"
+
 ./configure \
   --prefix=/etc/nginx \
   --sbin-path=/usr/sbin/nginx \
@@ -45,8 +52,8 @@ export LUAJIT_INC=/opt/luajit2/include/luajit-2.1
   --with-stream_realip_module \
   --with-stream_ssl_module \
   --with-stream_ssl_preread_module \
-  --with-cc-opt='-g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -flto=auto -ffat-lto-objects -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fPIC' \
-  --with-ld-opt='-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie -lpcre -Wl,-rpath,/opt/luajit2/lib' \
+  --with-cc-opt="-g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -flto=auto -ffat-lto-objects -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fPIC ${pcre_cflags}" \
+  --with-ld-opt="-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie ${pcre_ldflags} -Wl,-rpath,/opt/luajit2/lib -Wl,-rpath,/opt/pcre1/lib" \
   --add-dynamic-module=../headers-more-nginx-module \
   --add-dynamic-module=../lua-nginx-module \
   --add-dynamic-module=../ngx_devel_kit \

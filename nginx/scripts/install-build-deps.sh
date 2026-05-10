@@ -18,32 +18,44 @@ log "Installing build dependencies"
 
 pcre_dev_package="libpcre3-dev"
 pcre_dev_candidate="$(apt-cache policy "${pcre_dev_package}" | awk '/Candidate:/ { print $2; exit }')"
-if [[ -z "${pcre_dev_candidate}" || "${pcre_dev_candidate}" == "(none)" ]]; then
-  log "Adding Ubuntu noble package source for libpcre3-dev compatibility"
-  printf '%s\n' 'deb http://archive.ubuntu.com/ubuntu noble main' \
-    | "${sudo_cmd[@]}" tee /etc/apt/sources.list.d/noble-pcre.list >/dev/null
-  {
-    printf 'Package: *\n'
-    printf 'Pin: release n=noble\n'
-    printf 'Pin-Priority: 100\n'
-    printf '\n'
-    printf 'Package: libpcre3 libpcre3-dev\n'
-    printf 'Pin: release n=noble\n'
-    printf 'Pin-Priority: 990\n'
-  } | "${sudo_cmd[@]}" tee /etc/apt/preferences.d/noble-pcre >/dev/null
-  "${sudo_cmd[@]}" apt-get update
-fi
+install_pcre_from_source="false"
 
-"${sudo_cmd[@]}" apt-get install -y \
+dependencies=(
   build-essential \
   ca-certificates \
   cmake \
   curl \
   git \
   libbrotli-dev \
-  "${pcre_dev_package}" \
   libssl-dev \
   perl \
   pkg-config \
   xz-utils \
   zlib1g-dev
+)
+
+if [[ -z "${pcre_dev_candidate}" || "${pcre_dev_candidate}" == "(none)" ]]; then
+  install_pcre_from_source="true"
+else
+  dependencies+=("${pcre_dev_package}")
+fi
+
+"${sudo_cmd[@]}" apt-get install -y "${dependencies[@]}"
+
+if [[ "${install_pcre_from_source}" == "true" ]]; then
+  pcre_version="${PCRE_VERSION:-8.45}"
+  pcre_prefix="${PCRE_PREFIX:-/opt/pcre1}"
+  pcre_url="https://sourceforge.net/projects/pcre/files/pcre/${pcre_version}/pcre-${pcre_version}.tar.gz/download"
+  pcre_workdir="$(mktemp -d)"
+
+  log "Building PCRE ${pcre_version} from source into ${pcre_prefix}"
+  curl -fsSL "${pcre_url}" -o "${pcre_workdir}/pcre.tar.gz"
+  tar -xzf "${pcre_workdir}/pcre.tar.gz" -C "${pcre_workdir}"
+  (
+    cd "${pcre_workdir}/pcre-${pcre_version}"
+    ./configure --prefix="${pcre_prefix}" --enable-utf --enable-unicode-properties
+    make -j"$(nproc)"
+    "${sudo_cmd[@]}" make install
+  )
+  rm -rf "${pcre_workdir}"
+fi
