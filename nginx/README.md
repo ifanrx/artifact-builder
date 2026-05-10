@@ -5,9 +5,9 @@ GitHub Actions repo for building LuaJIT and nginx dynamic modules, then publishi
 ## Outputs
 
 - release tag: `nginx-v<version>`
-- module archives: `nginx-modules-jammy.tar.xz`, `nginx-modules-noble.tar.xz`
-- LuaJIT tarballs: `luajit2-jammy.tar.xz`, `luajit2-noble.tar.xz`
-- manifests: `build-manifest-jammy.env`, `build-manifest-noble.env`
+- module archives: `nginx-modules-jammy.tar.xz`, `nginx-modules-noble.tar.xz`, `nginx-modules-resolute.tar.xz`
+- LuaJIT tarballs: `luajit2-jammy.tar.xz`, `luajit2-noble.tar.xz`, `luajit2-resolute.tar.xz`
+- manifests: `build-manifest-jammy.env`, `build-manifest-noble.env`, `build-manifest-resolute.env`
 
 Each build also emits a manifest with the resolved dependency SHAs used for that run.
 
@@ -31,6 +31,6 @@ No external storage secrets are required for publishing. The workflow publishes 
 - push-triggered validation builds for changes under `nginx/` and the workflow file,
 - scheduled nginx release detection,
 - manual rebuilds via `workflow_dispatch`,
-- per-distro builds for Ubuntu 22.04 (`jammy`) and 24.04 (`noble`),
+- per-distro builds for Ubuntu 22.04 (`jammy`), 24.04 (`noble`), and 26.04 (`resolute`),
 - GitHub Release publishing,
 - direct commits that update `nginx/versions/nginx-version.txt` after a successful publish.
