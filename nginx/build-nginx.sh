@@ -52,7 +52,7 @@ pcre_ldflags="$(pkg-config --libs libpcre 2>/dev/null || printf '%s' '-lpcre')"
   --with-stream_realip_module \
   --with-stream_ssl_module \
   --with-stream_ssl_preread_module \
-  --with-cc-opt="-g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -flto=auto -ffat-lto-objects -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fPIC ${pcre_cflags}" \
+  --with-cc-opt="-g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -flto=auto -ffat-lto-objects -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fPIC -Wno-discarded-qualifiers ${pcre_cflags}" \
   --with-ld-opt="-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie ${pcre_ldflags} -Wl,-rpath,/opt/luajit2/lib -Wl,-rpath,/opt/pcre1/lib" \
   --add-dynamic-module=../headers-more-nginx-module \
   --add-dynamic-module=../lua-nginx-module \
