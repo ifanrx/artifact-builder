@@ -5,3 +5,4 @@ headers-more-nginx-module git https://github.com/openresty/headers-more-nginx-mo
 ngx_devel_kit git https://github.com/simpl/ngx_devel_kit.git HEAD
 ngx_http_substitutions_filter_module git https://github.com/yaoweibin/ngx_http_substitutions_filter_module.git HEAD
 ngx_brotli git https://github.com/google/ngx_brotli.git HEAD
+ngx-fancyindex git https://github.com/aperezdc/ngx-fancyindex.git HEAD

@@ -20,6 +20,8 @@ The workflow also verifies that any module linked against LuaJIT resolves `liblu
 - [`sources.lock`](./sources.lock) pins upstream source repos and refs.
 - [`versions/nginx-version.txt`](./versions/nginx-version.txt) records the last successfully published nginx version.
 
+The nginx build currently includes OpenResty Lua modules, Brotli, substitutions, headers-more, and `ngx-fancyindex`.
+
 ## Required GitHub Configuration
 
 No external storage secrets are required for publishing. The workflow publishes to GitHub Releases using the repository `GITHUB_TOKEN`.
