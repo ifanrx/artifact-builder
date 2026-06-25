@@ -20,7 +20,7 @@ The workflow also verifies that any module linked against LuaJIT resolves `liblu
 - [`sources.lock`](./sources.lock) pins upstream source repos and refs.
 - [`versions/nginx-version.txt`](./versions/nginx-version.txt) records the last successfully published nginx version.
 
-The nginx build currently includes OpenResty Lua modules, Brotli, substitutions, headers-more, and `ngx-fancyindex`.
+The nginx build currently includes OpenResty Lua modules, Brotli, substitutions, headers-more, `ngx-fancyindex`, and `nginx-acme`.
 
 ## Required GitHub Configuration
 

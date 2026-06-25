@@ -59,4 +59,5 @@ pcre_ldflags="$(pkg-config --libs libpcre 2>/dev/null || printf '%s' '-lpcre')"
   --add-dynamic-module=../ngx_devel_kit \
   --add-dynamic-module=../ngx_http_substitutions_filter_module \
   --add-dynamic-module=../ngx_brotli \
-  --add-dynamic-module=../ngx-fancyindex
+  --add-dynamic-module=../ngx-fancyindex \
+  --add-dynamic-module=../nginx-acme
