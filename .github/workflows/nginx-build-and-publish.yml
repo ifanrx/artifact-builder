@@ -91,7 +91,7 @@ jobs:
   build-resolute:
     needs: check-release
     if: needs.check-release.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
     steps:
@@ -102,25 +102,23 @@ jobs:
           echo "BUILD_ROOT=${RUNNER_TEMP}/build/resolute" >> "${GITHUB_ENV}"
           echo "OUTPUT_DIR=${RUNNER_TEMP}/output/resolute" >> "${GITHUB_ENV}"
 
-      - name: Build resolute artifacts in Ubuntu 26.04 container
-        run: |
-          docker run --rm \
-            -v "${GITHUB_WORKSPACE}:/workspace" \
-            -v "${RUNNER_TEMP}:${RUNNER_TEMP}" \
-            -w /workspace \
-            -e NGINX_VERSION \
-            -e BUILD_ROOT \
-            -e OUTPUT_DIR \
-            ubuntu:26.04 \
-            bash -lc '
-              set -euo pipefail
-              ./nginx/scripts/install-build-deps.sh
-              ./nginx/scripts/fetch-sources.sh "${BUILD_ROOT}" "${NGINX_VERSION}"
-              ./nginx/scripts/build-luajit-artifact.sh "${BUILD_ROOT}" resolute "${OUTPUT_DIR}"
-              ./nginx/scripts/build-nginx-modules.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${OUTPUT_DIR}"
-              ./nginx/scripts/verify-nginx-modules.sh "${OUTPUT_DIR}/modules"
-              ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" resolute "${OUTPUT_DIR}/build-manifest.env"
-            '
+      - name: Install build dependencies
+        run: ./nginx/scripts/install-build-deps.sh
+
+      - name: Fetch sources
+        run: ./nginx/scripts/fetch-sources.sh "${BUILD_ROOT}" "${NGINX_VERSION}"
+
+      - name: Build LuaJIT archive
+        run: ./nginx/scripts/build-luajit-artifact.sh "${BUILD_ROOT}" resolute "${OUTPUT_DIR}"
+
+      - name: Build nginx modules
+        run: ./nginx/scripts/build-nginx-modules.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${OUTPUT_DIR}"
+
+      - name: Verify nginx module linkage
+        run: ./nginx/scripts/verify-nginx-modules.sh "${OUTPUT_DIR}/modules"
+
+      - name: Write build manifest
+        run: ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" resolute "${OUTPUT_DIR}/build-manifest.env"
 
       - uses: actions/upload-artifact@v6
         with:

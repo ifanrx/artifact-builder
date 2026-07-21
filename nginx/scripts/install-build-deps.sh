@@ -30,6 +30,8 @@ dependencies=(
   libssl-dev \
   perl \
   pkg-config \
+  cargo \
+  rustc \
   xz-utils \
   zlib1g-dev
 )
