@@ -1,38 +1,11 @@
-# artifact-builder / nginx
+# nginx artifacts
 
-GitHub Actions repo for building LuaJIT and nginx dynamic modules, then publishing the outputs as GitHub Release assets.
+Builds LuaJIT and nginx dynamic modules for Ubuntu 22.04 (Jammy), 24.04 (Noble), and 26.04 (Resolute), published as GitHub Release assets.
 
-## Outputs
+Modules include Lua, NDK, Brotli, headers-more, substitutions, fancyindex, and ACME.
 
-- release tag: `nginx-v<version>`
-- module archives: `nginx-modules-jammy.tar.xz`, `nginx-modules-noble.tar.xz`, `nginx-modules-resolute.tar.xz`
-- LuaJIT tarballs: `luajit2-jammy.tar.xz`, `luajit2-noble.tar.xz`, `luajit2-resolute.tar.xz`
-- manifests: `build-manifest-jammy.env`, `build-manifest-noble.env`, `build-manifest-resolute.env`
+Releases use `nginx-v<version>` tags and contain:
 
-Each build also emits a manifest with the resolved dependency SHAs used for that run.
-
-The workflow also verifies that any module linked against LuaJIT resolves `libluajit-5.1.so.2` from `/opt/luajit2/lib` and retains an `RPATH` or `RUNPATH` for that path.
-
-## Source Of Truth
-
-- [`build-luajit.sh`](./build-luajit.sh) installs LuaJIT into `/opt/luajit2`.
-- [`build-nginx.sh`](./build-nginx.sh) configures nginx to build the dynamic modules against that LuaJIT prefix.
-- [`sources.lock`](./sources.lock) pins upstream source repos and refs.
-- [`versions/nginx-version.txt`](./versions/nginx-version.txt) records the last successfully published nginx version.
-
-The nginx build currently includes OpenResty Lua modules, Brotli, substitutions, headers-more, `ngx-fancyindex`, and `nginx-acme`.
-
-## Required GitHub Configuration
-
-No external storage secrets are required for publishing. The workflow publishes to GitHub Releases using the repository `GITHUB_TOKEN`.
-
-## Workflow
-
-[`nginx-build-and-publish.yml`](../.github/workflows/nginx-build-and-publish.yml) supports:
-
-- push-triggered validation builds for changes under `nginx/` and the workflow file,
-- scheduled nginx release detection,
-- manual rebuilds via `workflow_dispatch`,
-- per-distro builds for Ubuntu 22.04 (`jammy`), 24.04 (`noble`), and 26.04 (`resolute`),
-- GitHub Release publishing,
-- direct commits that update `nginx/versions/nginx-version.txt` after a successful publish.
+- `nginx-modules-<distro>.tar.xz`
+- `luajit2-<distro>.tar.xz`
+- `build-manifest-<distro>.env`

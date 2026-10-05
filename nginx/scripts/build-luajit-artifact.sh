@@ -19,6 +19,9 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 [[ -d "${luajit_dir}" ]] || fail "LuaJIT source directory not found: ${luajit_dir}"
+for library in lua-resty-core lua-resty-lrucache; do
+  [[ -d "${WORKDIR}/src/${library}" ]] || fail "Lua runtime library source directory not found: ${library}"
+done
 
 mkdir -p "${OUTPUT_DIR}"
 "${sudo_cmd[@]}" rm -rf /opt/luajit2
@@ -28,6 +31,13 @@ log "Building LuaJIT in ${luajit_dir}"
   cd "${luajit_dir}"
   "${sudo_cmd[@]}" bash "${REPO_ROOT}/build-luajit.sh"
 )
+
+for library in lua-resty-core lua-resty-lrucache; do
+  "${sudo_cmd[@]}" make -C "${WORKDIR}/src/${library}" install \
+    LUA_LIB_DIR=/opt/luajit2/share/lua/5.1
+done
+
+bash "${SCRIPT_DIR}/verify-luajit.sh"
 
 log "Packing ${archive_path}"
 "${sudo_cmd[@]}" tar -C /opt -cJf - luajit2 > "${archive_path}"

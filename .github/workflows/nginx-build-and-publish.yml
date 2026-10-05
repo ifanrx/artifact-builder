@@ -117,6 +117,9 @@ jobs:
       - name: Verify nginx module linkage
         run: ./nginx/scripts/verify-nginx-modules.sh "${OUTPUT_DIR}/modules"
 
+      - name: Verify official nginx.org compatibility
+        run: bash ./nginx/scripts/verify-nginx-package.sh "${BUILD_ROOT}" "${NGINX_VERSION}" resolute "${OUTPUT_DIR}"
+
       - name: Write build manifest
         run: ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" resolute "${OUTPUT_DIR}/build-manifest.env"
 
