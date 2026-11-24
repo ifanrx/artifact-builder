@@ -22,7 +22,7 @@ on:
         default: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: nginx-build-and-publish-${{ github.ref }}
@@ -30,19 +30,23 @@ concurrency:
 
 jobs:
   check-release:
+    name: Check nginx release
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       nginx_version: ${{ steps.check.outputs.nginx_version }}
     steps:
       - uses: actions/checkout@v6
 
-      - id: check
+      - name: Resolve target nginx version
+        id: check
         env:
           NGINX_VERSION_OVERRIDE: ${{ inputs.nginx_version }}
         run: ./nginx/scripts/check-nginx-release.sh
 
   build:
+    name: Build (${{ matrix.distro }})
     needs: check-release
     if: needs.check-release.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     strategy:
@@ -51,133 +55,87 @@ jobs:
         include:
           - distro: jammy
             runner: ubuntu-22.04
+            verify_package: false
           - distro: noble
             runner: ubuntu-24.04
+            verify_package: false
+          - distro: resolute
+            runner: ubuntu-26.04
+            verify_package: true
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     env:
+      DISTRO: ${{ matrix.distro }}
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
     steps:
       - uses: actions/checkout@v6
-
-      - name: Prepare build directories
-        run: |
-          echo "BUILD_ROOT=${RUNNER_TEMP}/build/${{ matrix.distro }}" >> "${GITHUB_ENV}"
-          echo "OUTPUT_DIR=${RUNNER_TEMP}/output/${{ matrix.distro }}" >> "${GITHUB_ENV}"
 
       - name: Install build dependencies
         run: ./nginx/scripts/install-build-deps.sh
 
       - name: Fetch sources
-        run: ./nginx/scripts/fetch-sources.sh "${BUILD_ROOT}" "${NGINX_VERSION}"
+        run: ./nginx/scripts/fetch-sources.sh "${RUNNER_TEMP}/build/${DISTRO}" "${NGINX_VERSION}"
 
       - name: Build LuaJIT archive
-        run: ./nginx/scripts/build-luajit-artifact.sh "${BUILD_ROOT}" "${{ matrix.distro }}" "${OUTPUT_DIR}"
+        run: ./nginx/scripts/build-luajit-artifact.sh "${RUNNER_TEMP}/build/${DISTRO}" "${DISTRO}" "${RUNNER_TEMP}/output/${DISTRO}"
 
       - name: Build nginx modules
-        run: ./nginx/scripts/build-nginx-modules.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${OUTPUT_DIR}"
+        run: ./nginx/scripts/build-nginx-modules.sh "${RUNNER_TEMP}/build/${DISTRO}" "${NGINX_VERSION}" "${RUNNER_TEMP}/output/${DISTRO}"
 
       - name: Verify nginx module linkage
-        run: ./nginx/scripts/verify-nginx-modules.sh "${OUTPUT_DIR}/modules"
-
-      - name: Write build manifest
-        run: ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${{ matrix.distro }}" "${OUTPUT_DIR}/build-manifest.env"
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: nginx-build-${{ matrix.distro }}
-          path: ${{ env.OUTPUT_DIR }}
-          if-no-files-found: error
-
-  build-resolute:
-    needs: check-release
-    if: needs.check-release.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-    runs-on: ubuntu-26.04
-    env:
-      NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Prepare build directories
-        run: |
-          echo "BUILD_ROOT=${RUNNER_TEMP}/build/resolute" >> "${GITHUB_ENV}"
-          echo "OUTPUT_DIR=${RUNNER_TEMP}/output/resolute" >> "${GITHUB_ENV}"
-
-      - name: Install build dependencies
-        run: ./nginx/scripts/install-build-deps.sh
-
-      - name: Fetch sources
-        run: ./nginx/scripts/fetch-sources.sh "${BUILD_ROOT}" "${NGINX_VERSION}"
-
-      - name: Build LuaJIT archive
-        run: ./nginx/scripts/build-luajit-artifact.sh "${BUILD_ROOT}" resolute "${OUTPUT_DIR}"
-
-      - name: Build nginx modules
-        run: ./nginx/scripts/build-nginx-modules.sh "${BUILD_ROOT}" "${NGINX_VERSION}" "${OUTPUT_DIR}"
-
-      - name: Verify nginx module linkage
-        run: ./nginx/scripts/verify-nginx-modules.sh "${OUTPUT_DIR}/modules"
+        run: ./nginx/scripts/verify-nginx-modules.sh "${RUNNER_TEMP}/output/${DISTRO}/modules"
 
       - name: Verify official nginx.org compatibility
-        run: bash ./nginx/scripts/verify-nginx-package.sh "${BUILD_ROOT}" "${NGINX_VERSION}" resolute "${OUTPUT_DIR}"
+        if: matrix.verify_package
+        run: ./nginx/scripts/verify-nginx-package.sh "${RUNNER_TEMP}/build/${DISTRO}" "${NGINX_VERSION}" "${DISTRO}" "${RUNNER_TEMP}/output/${DISTRO}"
 
       - name: Write build manifest
-        run: ./nginx/scripts/write-build-manifest.sh "${BUILD_ROOT}" "${NGINX_VERSION}" resolute "${OUTPUT_DIR}/build-manifest.env"
+        run: ./nginx/scripts/write-build-manifest.sh "${RUNNER_TEMP}/build/${DISTRO}" "${NGINX_VERSION}" "${DISTRO}" "${RUNNER_TEMP}/output/${DISTRO}/build-manifest.env"
 
-      - uses: actions/upload-artifact@v6
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v6
         with:
-          name: nginx-build-resolute
-          path: ${{ env.OUTPUT_DIR }}
+          name: nginx-build-${{ matrix.distro }}
+          path: ${{ runner.temp }}/output/${{ matrix.distro }}
           if-no-files-found: error
 
   publish:
+    name: Publish release
     needs:
       - check-release
       - build
-      - build-resolute
     if: |
-      success() &&
+      needs.build.result == 'success' &&
       (
         github.event_name == 'schedule' ||
         github.event_name == 'push' ||
         inputs.publish == true
       )
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       NGINX_VERSION: ${{ needs.check-release.outputs.nginx_version }}
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v7
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
         with:
           path: ${{ runner.temp }}/downloads
 
-      - name: Prepare release directories
-        run: echo "RELEASE_ASSET_DIR=${RUNNER_TEMP}/release-assets" >> "${GITHUB_ENV}"
-
       - name: Package release assets
-        run: ./nginx/scripts/package-release-assets.sh "${RUNNER_TEMP}/downloads" "${RELEASE_ASSET_DIR}"
+        run: ./nginx/scripts/package-release-assets.sh "${RUNNER_TEMP}/downloads" "${RUNNER_TEMP}/release-assets"
 
       - name: Publish GitHub Release assets
-        run: ./nginx/scripts/publish-github-release.sh "${RELEASE_ASSET_DIR}" "${NGINX_VERSION}"
+        run: ./nginx/scripts/publish-github-release.sh "${RUNNER_TEMP}/release-assets" "${NGINX_VERSION}"
 
-  update-tracked-version:
-    needs:
-      - check-release
-      - publish
-    if: |
-      needs.publish.result == 'success' &&
-      (
-        github.event_name == 'schedule' ||
-        github.event_name == 'push'
-      )
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Commit tracked nginx version
+      - name: Update tracked nginx version
+        if: github.event_name == 'schedule' || github.event_name == 'push'
         run: |
-          printf '%s\n' "${{ needs.check-release.outputs.nginx_version }}" > nginx/versions/nginx-version.txt
+          printf '%s\n' "${NGINX_VERSION}" > nginx/versions/nginx-version.txt
 
           if git diff --quiet -- nginx/versions/nginx-version.txt; then
             echo "Tracked nginx version is already current"
@@ -187,5 +145,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add nginx/versions/nginx-version.txt
-          git commit -m "chore(nginx): track nginx ${{ needs.check-release.outputs.nginx_version }} [skip ci]"
+          git commit -m "chore(nginx): track nginx ${NGINX_VERSION} [skip ci]"
           git push origin HEAD:main
